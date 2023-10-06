@@ -66,25 +66,27 @@ public record RuneStoneAPI(String cookie) {
         Request request = new Request.Builder()
                 .url("https://runestone.academy/runestone/admin/course_students")
                 .method("POST", body)
-                .addHeader("Accept", "application/json, text/javascript, */*; q=0.01")
+                .addHeader("Accept", "application/json")
+                .addHeader("Accept-Encoding", "gzip, deflate, br")
                 .addHeader("Accept-Language", "en-US,en;q=0.9")
                 .addHeader("Connection", "keep-alive")
                 .addHeader("Content-Length", "0")
+                .addHeader("Content-Type", "application/json; charset=utf-8")
                 .addHeader("Cookie", cookie)
                 .addHeader("Origin", "https://runestone.academy")
                 .addHeader("Referer", "https://runestone.academy/runestone/admin/grading")
                 .addHeader("Sec-Fetch-Dest", "empty")
                 .addHeader("Sec-Fetch-Mode", "cors")
                 .addHeader("Sec-Fetch-Site", "same-origin")
-                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
+                .addHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36")
                 .addHeader("X-Requested-With", "XMLHttpRequest")
-                .addHeader("sec-ch-ua", "\"Google Chrome\";v=\"107\", \"Chromium\";v=\"107\", \"Not=A?Brand\";v=\"24\"")
+                .addHeader("Sec-Ch-Ua", "\"Chromium\";v=\"116\", \"Not)A;Brand\";v=\"24\", \"Google Chrome\";v=\"116\"")
                 .addHeader("sec-ch-ua-mobile", "?0")
-                .addHeader("sec-ch-ua-platform", "\"Windows\"")
+                .addHeader("sec-ch-ua-platform", "\"macOS\"")
                 .build();
 
         String resp = (String) request(request);
-
+        System.out.println(resp);
         JSONObject respjson = new JSONObject(resp);
 
         for (Map.Entry<String, Object> entry : respjson.toMap().entrySet()) {
@@ -208,7 +210,7 @@ public record RuneStoneAPI(String cookie) {
         return body;
     }
 
-    private LinkedList<Attempt> requestHistory(String sid, String pid) {
+    public LinkedList<Attempt> requestHistory(String sid, String pid) {
         MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
         JSONObject body = new JSONObject().put("acid", pid).put("sid", sid);
         RequestBody reqbody = RequestBody.create(body.toString(), mediaType);

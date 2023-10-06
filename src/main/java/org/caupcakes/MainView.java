@@ -37,6 +37,7 @@ public class MainView extends VerticalLayout implements BeforeEnterObserver, Has
     private int pointer = 0;
 
     public MainView() {
+        System.out.println("MainView initialized q");
     }
 
     @Override
