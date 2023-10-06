@@ -1,6 +1,8 @@
 package org.caupcakes.api;
 
 import com.github.sisyphsu.dateparser.DateParserUtils;
+import com.helger.commons.string.util.LevenshteinDistance;
+import com.opencsv.CSVWriter;
 import okhttp3.*;
 import org.caupcakes.records.Attempt;
 import org.caupcakes.records.Problem;
@@ -94,6 +96,8 @@ public class RunestoneAPI2 {
                     "session_id_runestone=" + sessionID + "; " +
                     "access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3bGkyMjMiLCJleHAiOjE3MDQ3NDkyMzh9.Thc1eaRZscxOu1MwIJfZps1Tp3tKUNU2fUOisP3Ia_g; " +
                     "__utmb=28105279.3.10.1695677234";
+            resp.close();
+            resp2.close();
         }
         catch (IOException e) {
             throw new RuntimeException(e);
@@ -212,6 +216,82 @@ public class RunestoneAPI2 {
         } catch (Exception e) {
             return request(request, retries - 1);
         }
+    }
+
+    public void writeStudentData(String pid, String sid, String path) {
+        try {
+            CSVWriter writer = new CSVWriter(new FileWriter(path));
+            LinkedList<Attempt> l = requestHistory(sid, pid);
+            String[] r1 = new String[l.size()], r2 = new String[l.size()], r3 = new String[l.size()];
+            String prev = "";
+            int ind = 0;
+            for (Attempt i : l) {
+                r1[ind] = i.code();
+                r2[ind] = String.valueOf(i.timestamp());
+                r3[ind] = String.valueOf(LevenshteinDistance.getDistance(prev, i.code()));
+                ind++;
+                prev = i.code();
+            }
+            writer.writeNext(r1);
+            writer.writeNext(r2);
+            writer.writeNext(r3);
+            writer.close();
+        }
+        catch (Exception ignored) {}
+    }
+
+    //TODO
+    public void getStudentData(String pid, String sid) {
+        LinkedList<Attempt> l = requestHistory(sid, pid);
+        String[] r2 = new String[l.size()], r3 = new String[l.size()];
+        String prev = "";
+        int ind = 0;
+        for (Attempt i : l) {
+            r2[ind] = String.valueOf(i.timestamp());
+            r3[ind] = String.valueOf(LevenshteinDistance.getDistance(prev, i.code()));
+            ind++;
+            prev = i.code();
+        }
+    }
+
+    /**
+     * Returns the edit distance / second * 10000 metric for all students for a given problem.
+     * @param pid the problem id of the problem to be analyzed
+     * @return a HashMap with the key values of student ID's and values of metrics, average and maximum in that order.
+     */
+    public HashMap<String, double[]> getAllScores(String pid) {
+        Hashtable<String, String> names = getNames();
+        HashMap<String, double[]> scores = new HashMap<>();
+        for (String key : names.keySet()) {
+            System.out.println(names.get(key) + " (" + key + ")");
+            LinkedList<Attempt> history = requestHistory(key, "lhs_test_list2");
+//            System.out.println(history);
+            double min = 0, max = 0, sum = 0, num = 0;
+            Attempt prev = null;
+//            System.out.println("num submissions: " + history.size());
+            for (Attempt attempt : history) {
+                num++;
+                if(num == 1) {
+                    prev = attempt;
+                    continue;
+                }
+                double diff = 10000d * LevenshteinDistance.getDistance(prev.code(), attempt.code()) / (attempt.timestamp() - prev.timestamp());
+//                System.out.println("dist: " + LevenshteinDistance.getDistance(prev.code(), attempt.code()) + " time: " + (attempt.timestamp() - prev.timestamp()) + " diff: " + diff);
+                min = Math.min(min, diff);
+                max = Math.max(max, diff);
+                sum += diff;
+                prev = attempt;
+            }
+            if(num == 1) {
+                System.out.println("N/A - one submission");
+                break;
+            }
+            sum /= (num - 1);
+            System.out.println("Average edit distance per second: " + sum);
+            System.out.println("Maximum edit distance per second: " + max);
+            scores.put(key, new double[]{sum, max});
+        }
+        return scores;
     }
 }
 
