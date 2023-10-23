@@ -1,6 +1,5 @@
 package org.caupcakes.db;
 
-import org.bson.Document;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -24,17 +23,17 @@ public class CodescanTask implements Comparable<CodescanTask> {
         this.type = type;
     }
 
-    public CodescanTask(Document doc) {
-        this.studentids = (ArrayList<String>) doc.get("students");
-        Collections.sort(studentids);
-
-        this.problemids = (ArrayList<String>) doc.get("problems");
-        Collections.sort(problemids);
-
-        this.time = doc.getLong("time");
-        this.cookie = doc.getString("cookie");
-        this.type = doc.getString("type");
-    }
+//    public CodescanTask(Document doc) {
+//        this.studentids = (ArrayList<String>) doc.get("students");
+//        Collections.sort(studentids);
+//
+//        this.problemids = (ArrayList<String>) doc.get("problems");
+//        Collections.sort(problemids);
+//
+//        this.time = doc.getLong("time");
+//        this.cookie = doc.getString("cookie");
+//        this.type = doc.getString("type");
+//    }
 
     public ArrayList<String> getProblemids() {
         return problemids;
@@ -58,13 +57,13 @@ public class CodescanTask implements Comparable<CodescanTask> {
         return (int) (time - o.time);
     }
 
-    public Document toDocument() {
-        return new Document("time", time)
-                .append("students", studentids)
-                .append("problems", problemids)
-                .append("cookie", cookie)
-                .append("type", type);
-    }
+//    public Document toDocument() {
+//        return new Document("time", time)
+//                .append("students", studentids)
+//                .append("problems", problemids)
+//                .append("cookie", cookie)
+//                .append("type", type);
+//    }
 
     @Override
     public String toString() {

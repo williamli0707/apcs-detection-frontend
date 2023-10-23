@@ -5,31 +5,21 @@ import com.helger.commons.string.util.LevenshteinDistance;
 import com.opencsv.CSVWriter;
 import okhttp3.*;
 import org.caupcakes.records.Attempt;
-import org.caupcakes.records.Problem;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static org.caupcakes.db.Database.*;
-
 
 public class RunestoneAPI2 {
     private static final OkHttpClient client = new OkHttpClient.Builder().build();
 
-    private final static Hashtable<String, String> studentnamescache = loadNames();
+    private final static Hashtable<String, String> studentnamescache = new Hashtable<>();
     private final static Hashtable<String, String> defaultcodetemplatecache = new Hashtable<>();
     private String cookie;
     private static final String loginURL = "https://runestone.academy/user/login?_next=/";
@@ -41,7 +31,47 @@ public class RunestoneAPI2 {
 
     public RunestoneAPI2() {
         resetCookie();
-//        initNameCache();
+        System.out.println("Done initializing cookie: " + cookie);
+        cookie = "_gcl_au=1.1.1332442316.1694036375; __utmc=28105279; RS_info=\"{\"readings\": [\"Lists/ListComprehensions.html\"\054 \"Lists/NestedLists.html\"\054 \"Lists/StringsandLists.html\"\054 \"Lists/listTypeConversionFunction.html\"\054 \"Lists/TuplesandMutability.html\"\054 \"Lists/TupleAssignment.html\"\054 \"Lists/TuplesasReturnValues.html\"\054 \"Lists/Exercises.html\"]\054 \"tz_offset\": 7}\"; session_id_admin=205.173.47.254-12e99be8-596a-48ec-b212-f66d61c5ebdd; __utma=28105279.603586017.1694036376.1696452015.1698096050.12; __utmz=28105279.1698096050.12.10.utmcsr=landing.runestone.academy|utmccn=(referral)|utmcmd=referral|utmcct=/; session_id_runestone=51880725:2b28a8f1-cad1-45ef-958f-7589dd75af69; access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3bGkyMjMiLCJleHAiOjE3MDcxNjgwNTN9.m9PZxL6-nYqdxQxXXxp9F81M5VxPoAFK6q_HFzhT4yk; __utmb=28105279.3.10.1698096050";
+        //TODO fix login issue - session id finding doesn't work
+        initNameCache();
+    }
+
+    private void initNameCache() {
+        Hashtable<String, String> newnames = new Hashtable<>();
+
+        MediaType mediaType = MediaType.parse("text/plain");
+        RequestBody body = RequestBody.create("", mediaType);
+        Request request = new Request.Builder()
+                .url("https://runestone.academy/runestone/admin/course_students")
+                .method("POST", body)
+                .addHeader("Accept", "application/json, text/javascript, */*; q=0.01")
+                .addHeader("Accept-Language", "en-US,en;q=0.9")
+                .addHeader("Connection", "keep-alive")
+                .addHeader("Content-Length", "0")
+                .addHeader("Cookie", cookie)
+                .addHeader("Origin", "https://runestone.academy")
+                .addHeader("Referer", "https://runestone.academy/runestone/admin/grading")
+                .addHeader("Sec-Fetch-Dest", "empty")
+                .addHeader("Sec-Fetch-Mode", "cors")
+                .addHeader("Sec-Fetch-Site", "same-origin")
+                .addHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36")
+                .addHeader("X-Requested-With", "XMLHttpRequest")
+                .addHeader("sec-ch-ua", "\"Google Chrome\";v=\"107\", \"Chromium\";v=\"107\", \"Not=A?Brand\";v=\"24\"")
+                .addHeader("sec-ch-ua-mobile", "?0")
+                .addHeader("sec-ch-ua-platform", "\"Windows\"")
+                .build();
+
+        String resp = (String) request(request);
+        System.out.println(resp);
+
+        JSONObject respjson = new JSONObject(resp);
+
+        for (Map.Entry<String, Object> entry : respjson.toMap().entrySet()) {
+            if (studentnamescache.putIfAbsent(entry.getKey(), (String) entry.getValue()) == null) {
+                newnames.put(entry.getKey(), (String) entry.getValue());
+            }
+        }
     }
 
     public Hashtable<String, String> getNames() {
@@ -72,30 +102,40 @@ public class RunestoneAPI2 {
                     .post(RequestBody.create(payload, JSON))
                     .build()
             ).execute();
+            System.out.println(resp2.body().string());
             matcher = psessionid.matcher(Objects.requireNonNull(resp2.headers().get("Set-Cookie")));
             if(!matcher.find()) throw new RuntimeException("no session id found");
             String sessionID = matcher.group(1);
             System.out.println("session id: " + sessionID);
+//            cookie = "_gcl_au=1.1.1332442316.1694036375; " +
+//                    "__utmc=28105279; " +
+//                    "RS_info=\"{" +
+//                    "\\\"readings\\\": [" +
+//                    "\\\"Lists/ListComprehensions.html\\\"\\054 " +
+//                    "\\\"Lists/NestedLists.html\\\"\\054 " +
+//                    "\\\"Lists/StringsandLists.html\\\"\\054 " +
+//                    "\\\"Lists/listTypeConversionFunction.html\\\"\\054 " +
+//                    "\\\"Lists/TuplesandMutability.html\\\"\\054 " +
+//                    "\\\"Lists/TupleAssignment.html\\\"\\054 \\\"Lists/TuplesasReturnValues.html\\\"\\054 " +
+//                    "\\\"Lists/Exercises.html\\\"" +
+//                    "]\\054 \\\"tz_offset\\\": 7" +
+//                    "}\"; " +
+//                    "session_id_admin=205.173.47.254-12e99be8-596a-48ec-b212-f66d61c5ebdd; " +
+//                    "__utma=28105279.603586017.1694036376.1695415067.1695677234.8; " +
+//                    "__utmz=28105279.1695677234.8.6.utmcsr=landing.runestone.academy|utmccn=(referral)|utmcmd=referral|utmcct=/; " +
+//                    "__utmt=1; " +
+//                    "session_id_runestone=" + sessionID + "; " +
+//                    "access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3bGkyMjMiLCJleHAiOjE3MDcxNjgwNTN9.m9PZxL6-nYqdxQxXXxp9F81M5VxPoAFK6q_HFzhT4yk; " +
+//                    "__utmb=28105279.3.10.1695677234";
             cookie = "_gcl_au=1.1.1332442316.1694036375; " +
-                    "__utmc=28105279; " +
-                    "RS_info=\"{" +
-                    "\\\"readings\\\": [" +
-                    "\\\"Lists/ListComprehensions.html\\\"\\054 " +
-                    "\\\"Lists/NestedLists.html\\\"\\054 " +
-                    "\\\"Lists/StringsandLists.html\\\"\\054 " +
-                    "\\\"Lists/listTypeConversionFunction.html\\\"\\054 " +
-                    "\\\"Lists/TuplesandMutability.html\\\"\\054 " +
-                    "\\\"Lists/TupleAssignment.html\\\"\\054 \\\"Lists/TuplesasReturnValues.html\\\"\\054 " +
-                    "\\\"Lists/Exercises.html\\\"" +
-                    "]\\054 \\\"tz_offset\\\": 7" +
-                    "}\"; " +
-                    "session_id_admin=205.173.47.254-12e99be8-596a-48ec-b212-f66d61c5ebdd; " +
-                    "__utma=28105279.603586017.1694036376.1695415067.1695677234.8; " +
-                    "__utmz=28105279.1695677234.8.6.utmcsr=landing.runestone.academy|utmccn=(referral)|utmcmd=referral|utmcct=/; " +
-                    "__utmt=1; " +
-                    "session_id_runestone=" + sessionID + "; " +
-                    "access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3bGkyMjMiLCJleHAiOjE3MDQ3NDkyMzh9.Thc1eaRZscxOu1MwIJfZps1Tp3tKUNU2fUOisP3Ia_g; " +
-                    "__utmb=28105279.3.10.1695677234";
+            "__utmc=28105279; " +
+            "RS_info=\"{\\\"readings\\\": [\\\"Lists/ListComprehensions.html\\\"\\054 \\\"Lists/NestedLists.html\\\"\\054 \\\"Lists/StringsandLists.html\\\"\\054 \\\"Lists/listTypeConversionFunction.html\\\"\\054 \\\"Lists/TuplesandMutability.html\\\"\\054 \\\"Lists/TupleAssignment.html\\\"\\054 \\\"Lists/TuplesasReturnValues.html\\\"\\054 \\\"Lists/Exercises.html\\\"]\\054 \\\"tz_offset\\\": 7}\"; " +
+            "session_id_admin=205.173.47.254-12e99be8-596a-48ec-b212-f66d61c5ebdd; " +
+            "__utma=28105279.603586017.1694036376.1695415067.1695677234.8; " +
+            "__utmz=28105279.1695677234.8.6.utmcsr=landing.runestone.academy|utmccn=(referral)|utmcmd=referral|utmcct=/; " +
+            "__utmt=1; session_id_runestone=" + "51880935:b82c80f1-7409-4c75-8521-ee3ae9dba149" + "; " +
+            "access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3bGkyMjMiLCJleHAiOjE3MDQ3NDkyMzh9.Thc1eaRZscxOu1MwIJfZps1Tp3tKUNU2fUOisP3Ia_g; " +
+            "__utmb=28105279.3.10.1695677234";
             resp.close();
             resp2.close();
         }
